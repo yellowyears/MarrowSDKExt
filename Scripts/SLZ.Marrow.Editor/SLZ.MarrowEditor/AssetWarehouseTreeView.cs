@@ -24,6 +24,7 @@ namespace SLZ.MarrowEditor
         public bool showAvatars = true;
         public bool showLevels = true;
         public bool showSpawnables = true;
+        public bool showVFX = true;
         public bool showDataCards = true;
         public bool showUntagged = true;
         public bool showSpawnFragments = false;
@@ -31,6 +32,7 @@ namespace SLZ.MarrowEditor
         public Texture2D avatarIcon;
         public Texture2D levelIcon;
         public Texture2D spawnableIcon;
+        public Texture2D vfxIcon;
         public Texture2D dataCardIcon;
         public Dictionary<string, bool> uniqueTags = new Dictionary<string, bool>();
         public Dictionary<string, bool> uniqueBoneTags = new Dictionary<string, bool>();
@@ -53,6 +55,8 @@ namespace SLZ.MarrowEditor
                 levelIcon = GetIconForMonoScript(typeof(LevelCrate));
             if (spawnableIcon == null)
                 spawnableIcon = GetIconForMonoScript(typeof(SpawnableCrate));
+            if (vfxIcon == null)
+                vfxIcon = GetIconForMonoScript(typeof(VFXCrate));
             if (dataCardIcon == null)
                 dataCardIcon = GetIconForMonoScript(typeof(DataCard));
             orderedObjs = new List<Object>();
@@ -125,6 +129,7 @@ namespace SLZ.MarrowEditor
                 HashSet<Crate> scanAvatars = new HashSet<Crate>();
                 HashSet<Crate> scanLevels = new HashSet<Crate>();
                 HashSet<Crate> scanSpawnables = new HashSet<Crate>();
+                HashSet<Crate> scanVFX = new HashSet<Crate>();
                 Dictionary<System.Type, List<DataCard>> scanDataCards = new Dictionary<Type, List<DataCard>>();
                 foreach (var scannable in filteredScannables)
                 {
@@ -155,6 +160,11 @@ namespace SLZ.MarrowEditor
                                             continue;
                                         scanSpawnables.Add(scannable as Crate);
                                     }
+
+                                    if (showVFX && scannable.GetType() == typeof(VFXCrate))
+                                    {
+                                        scanVFX.Add(scannable as Crate);
+                                    }
                                 }
                             }
                             else
@@ -181,6 +191,11 @@ namespace SLZ.MarrowEditor
                                                     continue;
                                                 scanSpawnables.Add(scannable as Crate);
                                             }
+
+                                            if (showVFX && scannable.GetType() == typeof(VFXCrate) && !scanVFX.Contains(scanCrate))
+                                            {
+                                                scanVFX.Add(scannable as Crate);
+                                            }
                                         }
                                     }
                                 }
@@ -204,6 +219,11 @@ namespace SLZ.MarrowEditor
                                             if (!showSpawnFragments && (scannable.Title.Contains("Fragment -") || scanCrate.Tags[t].ToLower().ToString() == "fragment"))
                                                 continue;
                                             scanSpawnables.Add(scannable as Crate);
+                                        }
+
+                                        if (showVFX && scannable.GetType() == typeof(VFXCrate) && !scanVFX.Contains(scanCrate))
+                                        {
+                                            scanVFX.Add(scannable as Crate);
                                         }
                                     }
                                 }
@@ -256,7 +276,7 @@ namespace SLZ.MarrowEditor
                 }
 
                 id++;
-                if (scanAvatars.Count > 0 || scanLevels.Count > 0 || scanSpawnables.Count > 0)
+                if (scanAvatars.Count > 0 || scanLevels.Count > 0 || scanSpawnables.Count > 0 || scanVFX.Count > 0)
                 {
                     var crateTypeTreeItemAdded = new TreeViewItem
                     {
@@ -274,12 +294,15 @@ namespace SLZ.MarrowEditor
                     var scanAvatarsList = scanAvatars.OrderBy(crate => crate.Title).ToList();
                     var scanLevelsList = scanLevels.OrderBy(crate => crate.Title).ToList();
                     var scanSpawnablesList = scanSpawnables.OrderBy(crate => crate.Title).ToList();
+                    var scanVFXList = scanVFX.OrderBy(crate => crate.Title).ToList();
                     if (scanAvatars != null && scanAvatars.Count > 0)
                         SetupCrateType(scanAvatarsList, ref id, typeof(AvatarCrate), crateTypeTreeItemAdded, root);
                     if (scanLevels != null && scanLevels.Count > 0)
                         SetupCrateType(scanLevelsList, ref id, typeof(LevelCrate), crateTypeTreeItemAdded, root);
                     if (scanSpawnables != null && scanSpawnables.Count > 0)
                         SetupCrateType(scanSpawnablesList, ref id, typeof(SpawnableCrate), crateTypeTreeItemAdded, root);
+                    if (scanVFX != null && scanVFX.Count > 0)
+                        SetupCrateType(scanVFXList, ref id, typeof(VFXCrate), crateTypeTreeItemAdded, root);
                 }
 
                 if (showDataCards)

@@ -84,6 +84,7 @@ namespace SLZ.MarrowEditor
                             treeViewAW.showLevels = EditorPrefs.GetBool("awSettingsShowLevels");
                             treeViewAW.showAvatars = EditorPrefs.GetBool("awSettingsShowAvatars");
                             treeViewAW.showSpawnables = EditorPrefs.GetBool("awSettingsShowSpawnabes");
+                            treeViewAW.showVFX = EditorPrefs.GetBool("awSettingsShowVFX");
                             treeViewAW.showDataCards = EditorPrefs.GetBool("awSettingsShowDatacards");
                             string selIDString = EditorPrefs.GetString("awSettingsSelectedIDs");
                             string[] selIDStringList = selIDString.Split(",");
@@ -118,6 +119,7 @@ namespace SLZ.MarrowEditor
             EditorPrefs.SetBool("awSettingsShowLevels", treeViewAW.showLevels);
             EditorPrefs.SetBool("awSettingsShowAvatars", treeViewAW.showAvatars);
             EditorPrefs.SetBool("awSettingsShowSpawnabes", treeViewAW.showSpawnables);
+            EditorPrefs.SetBool("awSettingsShowVFX", treeViewAW.showVFX);
             EditorPrefs.SetBool("awSettingsShowDatacards", treeViewAW.showDataCards);
             string selIDString = "";
             foreach (int selID in treeViewAW.state.selectedIDs)
@@ -358,6 +360,7 @@ namespace SLZ.MarrowEditor
                                 treeViewAW.showAvatars = GUILayout.Toggle(ShowAvatarsToggleContext(), new GUIContent(treeViewAW.avatarIcon, "Show Avatars"), MarrowGUIStyles.DefaultIconButton);
                                 treeViewAW.showLevels = GUILayout.Toggle(ShowLevelsToggleContext(), new GUIContent(treeViewAW.levelIcon, "Show Levels"), MarrowGUIStyles.DefaultIconButton);
                                 treeViewAW.showSpawnables = GUILayout.Toggle(ShowSpawnablesToggleContext(), new GUIContent(treeViewAW.spawnableIcon, "Show Spawnables"), MarrowGUIStyles.DefaultIconButton);
+                                treeViewAW.showVFX = GUILayout.Toggle(ShowVFXToggleContext(), new GUIContent(treeViewAW.vfxIcon, "Show VFX"), MarrowGUIStyles.DefaultIconButton);
                                 treeViewAW.showDataCards = GUILayout.Toggle(ShowDataCardsToggleContext(), new GUIContent(treeViewAW.dataCardIcon, "Show DataCards"), MarrowGUIStyles.DefaultIconButton);
                                 GUILayout.Space(5);
                                 GUIContent bitsTextOn = new GUIContent("Bits", "Show Destructible Fragments");
@@ -642,6 +645,34 @@ namespace SLZ.MarrowEditor
             }
         }
 
+        private bool ShowVFXToggleContext()
+        {
+            if (treeViewAW.showVFX)
+            {
+                if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
+                {
+                    if (Event.current.modifiers == (EventModifiers.Control))
+                    {
+                        Debug.Log("CTRL key held on VFX toggle");
+                    }
+                }
+
+                return true;
+            }
+            else
+            {
+                if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
+                {
+                    if (Event.current.modifiers == (EventModifiers.Control))
+                    {
+                        Debug.Log("CTRL key held on VFX toggle");
+                    }
+                }
+
+                return false;
+            }
+        }
+
         private bool ShowDataCardsToggleContext()
         {
             if (treeViewAW.showDataCards)
@@ -675,6 +706,7 @@ namespace SLZ.MarrowEditor
             treeViewAW.showAvatars = true;
             treeViewAW.showLevels = true;
             treeViewAW.showSpawnables = true;
+            treeViewAW.showVFX = true;
             treeViewAW.showDataCards = true;
             treeViewAW.showUntagged = true;
             foreach (var kvp in treeViewAW.uniqueBoneTags.ToArray())
@@ -693,6 +725,7 @@ namespace SLZ.MarrowEditor
             treeViewAW.showAvatars = false;
             treeViewAW.showLevels = false;
             treeViewAW.showSpawnables = false;
+            treeViewAW.showVFX = false;
             treeViewAW.showDataCards = false;
             treeViewAW.showUntagged = true;
             foreach (var kvp in treeViewAW.uniqueBoneTags.ToArray())
