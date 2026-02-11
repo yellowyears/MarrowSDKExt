@@ -244,7 +244,8 @@ namespace SLZ.Marrow
 
 		private bool _indexButtonUp;
 
-		private bool _indexButton;
+		// MODIFIED FOR HALF-LAB
+		public bool _indexButton;
 
 		private float _indexTriggerAxis;
 
