@@ -676,7 +676,8 @@ namespace SLZ.Marrow
 			return default(UniTaskVoid);
 		}
 
-		private void Charge()
+		// MODIFIED FOR HALF-LAB
+		public void Charge()
 		{
 		}
 
