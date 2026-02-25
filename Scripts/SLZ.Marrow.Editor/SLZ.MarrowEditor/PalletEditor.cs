@@ -8,6 +8,7 @@ using SLZ.Marrow;
 using UnityEngine;
 using UnityEditor;
 using SLZ.Marrow.Warehouse;
+using WebSocketSharp;
 
  
 
@@ -42,6 +43,15 @@ namespace SLZ.MarrowEditor
         public override bool ShowUnlockableRedactedFields()
         {
             return false;
+        }
+        
+        private static WebSocketSharp.WebSocket websocket;
+        public static bool DevModeEnabled
+        {
+            get
+            {
+                return websocket != null && websocket.ReadyState == WebSocketState.Open;
+            }
         }
 
         public override void OnEnable()
@@ -355,6 +365,15 @@ namespace SLZ.MarrowEditor
                                 PackPalletWithValidation(pallet, BuildTargetGroup.Android, BuildTarget.Android, EditorPrefs.GetBool("PackWithDedupe", false)).Forget();
                                 installSuccess = null;
                             }
+                            
+                            if (GUILayout.Button(new GUIContent("Hot Pack", "Build the pallet for PC, then hot reload it."), GUILayout.ExpandWidth(false)))
+                            {
+                                UniTask.Void(async () =>
+                                {
+                                    var success = await PackPalletWithValidationUniTask(pallet, BuildTargetGroup.Standalone, BuildTarget.StandaloneWindows64, EditorPrefs.GetBool("PackWithDedupe", false));
+                                    installSuccess = true;
+                                });
+                            }
 
                             GUILayout.FlexibleSpace();
                         }
@@ -583,6 +602,115 @@ namespace SLZ.MarrowEditor
                 QueueEditorUpdateLoop.StopEditorUpdateLoop();
                 packing = false;
             }
+        }
+        
+        private static async UniTask<bool> PackPalletWithValidationUniTask(Pallet pallet, BuildTargetGroup buildTargetGroup, BuildTarget buildTarget, bool dedupe = false)
+        {
+            var installSuccess = true;
+            
+            if (!packing)
+            {
+                packing = true;
+                QueueEditorUpdateLoop.StartEditorUpdateLoop();
+                SDKProjectPreferences.LoadFromFile();
+                bool currentLoadMarrowGames = SDKProjectPreferences.LoadMarrowGames;
+                if (currentLoadMarrowGames)
+                {
+                    SDKProjectPreferences.LoadMarrowGames = false;
+                    SDKProjectPreferences.SaveToFile();
+                    await UniTask.Delay(TimeSpan.FromMilliseconds(100));
+                    await AssetWarehouseWindow.ReloadWarehouse();
+                    await UniTask.Delay(TimeSpan.FromMilliseconds(100));
+                }
+
+                try
+                {
+                    if (!MarrowProjectValidation.ValidateProject())
+                    {
+                        MarrowProjectValidationWindow.ShowWindow();
+                        packing = false;
+                        return false;
+                    }
+
+                    var currentTargetGroup = EditorUserBuildSettings.selectedBuildTargetGroup;
+                    var currentTarget = EditorUserBuildSettings.activeBuildTarget;
+                    if (EditorUserBuildSettings.activeBuildTarget != buildTarget || EditorUserBuildSettings.selectedBuildTargetGroup != buildTargetGroup)
+                    {
+                        EditorUserBuildSettings.SwitchActiveBuildTarget(buildTargetGroup, buildTarget);
+                    }
+
+                    PalletPackerEditor.PackPallet(pallet, out var result, dedupe, checkValidation: false);
+                    if (result != null && string.IsNullOrEmpty(result.Error))
+                    {
+                        string palletFolder = AddressablesManager.EvaluateProfileValueBuildPathForPallet(pallet, AddressablesManager.ProfilePalletID);
+                        string gamePath = "";
+                        foreach (var gamePathV in ModBuilder.GamePathDictionary)
+                        {
+                            gamePath = gamePathV.Value;
+                        }
+                        var outPath = System.IO.Path.Combine(gamePath, MarrowSDK.RUNTIME_MODS_DIRECTORY_NAME);
+                        var success = ModBuilder.InstallMod(palletFolder, System.IO.Path.Combine(gamePath, MarrowSDK.RUNTIME_MODS_DIRECTORY_NAME));
+
+                        if (!success)
+                        {
+                            installSuccess = false;
+                        }
+                        else
+                        {
+                            Debug.Log($"Installed to {outPath}");
+                        }
+                        
+                        Debug.Log("Hot pack starting...");
+                            
+                        if (websocket != null)
+                        {
+                            ((IDisposable)websocket).Dispose();
+                            websocket = null;
+                        }
+    
+                        try
+                        {
+                            websocket = new WebSocketSharp.WebSocket("ws://127.0.0.1:50152/console");
+                            websocket.OnMessage += (sender, e) => Debug.Log(e.Data);
+                            websocket.Connect();
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.LogException(e);
+                        }
+
+                        websocket.Send($"assetwarehouse.reload {pallet.Barcode}");
+                        websocket.Send("level.reload");
+                    }
+                    else
+                    {
+                        EditorUtility.DisplayDialog("Pallet Pack Error", $"ERROR\nPallet \"{pallet.Title}\" failed to Pack\nError: {result?.Error}", "Ok   ):");
+                        installSuccess = false;
+                    }
+
+                    EditorUserBuildSettings.SwitchActiveBuildTarget(currentTargetGroup, currentTarget);
+                }
+                catch (Exception e)
+                {
+                    EditorUtility.DisplayDialog("Pallet Pack Error", $"CRITICAL PACKING ERROR\nPallet \"{pallet.Title}\" failed to Pack\nException: {e}", "Ok   ):");
+                    installSuccess = false;
+                }
+
+                if (currentLoadMarrowGames)
+                {
+                    SDKProjectPreferences.LoadFromFile();
+                    SDKProjectPreferences.LoadMarrowGames = true;
+                    SDKProjectPreferences.SaveToFile();
+                    await UniTask.Delay(TimeSpan.FromMilliseconds(100));
+                    await AssetWarehouseWindow.ReloadWarehouse();
+                    await UniTask.Delay(TimeSpan.FromMilliseconds(100));
+                }
+
+                QueueEditorUpdateLoop.StopEditorUpdateLoop();
+                packing = false;
+            }
+
+            return installSuccess;
         }
 
         private string[] GetPalletBarcodesFromMarrowGamePath(string gamePath)
